@@ -1,8 +1,5 @@
-
 import numpy as np
 from numpy.fft import *
-
-
 
 class PoissonSolver1d(object):
     L = 1.0

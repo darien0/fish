@@ -4,8 +4,8 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
-FLUIDS_INC = "/Users/jzrake/Work/fluids/include"
-PYFLUIDS_INC = "/Users/jzrake/Work/fluids/pyfluids"
+FLUIDS_INC = "/home/who/Documents/CALResearch/BinaryTurbulance/fluids/include"
+PYFLUIDS_INC = "/home/who/Documents/CALResearch/BinaryTurbulance/fluids/pyfluids"
 
 fluids = Extension("fish",
                    sources = ["fish.pyx"],

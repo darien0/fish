@@ -64,7 +64,7 @@ class OneDimensionalPolytrope(TestProblem):
     Provides the initial conditions of a 1d polytrope for Gamma=2. Pressure
     density satisfy Poisson equation and hydrostatic equillibrium.
     '''
-    fluid = 'gravs' # or gravp, grave
+    fluid = 'grave' # or gravp, grave
     gamma = 2.0
     Dc = 1.0 # central density
     Da = 1e-2 # atmosphere density
@@ -119,7 +119,7 @@ class PeriodicDensityWave(TestProblem):
 
     def __init__(self, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
-        if self.fluid in ['gravs', 'gravp']:
+        if self.fluid in ['gravs', 'gravp', 'grave']:
             self.plot_fields.append('phi')
             self.poisson_solver = gravity.PoissonSolver1d()
             self.fluid_descriptor.rhobar = self.D0

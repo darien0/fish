@@ -1,4 +1,3 @@
-
 import sys
 import os
 import time
@@ -8,8 +7,6 @@ import cPickle
 import numpy as np
 import pyfluids
 import pyfish
-
-
 
 class MaraEvolutionOperator(object):
     def __init__(self, problem, scheme):
@@ -210,9 +207,23 @@ class MaraEvolutionOperator(object):
         dx = [self.dx, self.dy, self.dz]
         self.boundary.set_boundary(U, ng)
         self.fluid.from_conserved(U)
+
+        if (U[...,0] < 0.0).any():
+            raise RuntimeError("negative density (conserved)")
+        if (U[...,1] < 0.0).any():
+            raise RuntimeError("negative energy")
+        self.fluid.from_conserved(U)
+        P = self.fluid.primitive
+        if (P[...,0] < 0.0).any():
+            raise RuntimeError("negative density (primitive)")
+        if (P[...,1] < 0.0).any():
+            #P[P[...,1] < self.pressure_floor, 1] = self.pressure_floor
+            #print "set pressure floor on some zones"
+            raise RuntimeError("negative pressure")
+
         self.update_gravity()
         L = self.scheme.time_derivative(self.fluid, dx)
-        if self.fluid.descriptor.fluid in ['gravp', 'gravs']:
+        if self.fluid.descriptor.fluid in ['gravp', 'gravs', 'grave']:
             S = self.fluid.source_terms()
             return L + S
         else:
@@ -226,13 +237,8 @@ class SimulationStatus:
 def main():
     # Problem options
     problem_cfg = dict(resolution=[128],
-                       tfinal=1.0,
-                       fluid='gravs', pauls_fix=False)
+                       tfinal=10.)
     problem = pyfish.problems.OneDimensionalPolytrope(selfgrav=True, **problem_cfg)
-    #problem = pyfish.problems.BrioWuShocktube(fluid='nrhyd',
-    #                                          tfinal=0.2,
-    #                                          geometry='planar', direction='x',
-    #                                          resolution=[128])
     #problem = pyfish.problems.PeriodicDensityWave(**problem_cfg)
     #problem = pyfish.problems.DrivenTurbulence2d(tfinal=0.01)
 
@@ -282,7 +288,7 @@ def main():
         ml = abs(mara.fluid.eigenvalues()).max()
         dt = status.CFL * mara.min_grid_spacing() / ml
         try:
-            wall_step = mara.advance(dt, rk=3)
+            wall_step = 1e-10 +  mara.advance(dt, rk=3)
         except RuntimeError as e:
             print e
             break

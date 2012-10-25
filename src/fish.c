@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +11,8 @@
 static void _pcm(fish_state *S, fluids_state **src, fluids_state *L,
 		 fluids_state *R, long flag);
 static void _plm(fish_state *S, fluids_state **src, fluids_state *L,
+		 fluids_state *R, long flag);
+static void _avg(fish_state *S, fluids_state **src, fluids_state *L,
 		 fluids_state *R, long flag);
 static void _weno5(fish_state *S, fluids_state **src, fluids_state *L,
 		   fluids_state *R, long flag);
@@ -37,6 +38,7 @@ fish_state *fish_new(void)
     .solver_type = FISH_GODUNOV,
     .riemann_solver = FLUIDS_RIEMANN_HLL,
     .reconstruction = FISH_PLM,
+    .gravrecnstruct = FISH_AVG,
     .smoothness_indicator = FISH_ISK_JIANGSHU96,
     .plm_theta = 2.0,
     .shenzha10_param = 0.0,
@@ -56,6 +58,7 @@ int fish_getparami(fish_state *S, int *param, long flag)
   case FISH_SOLVER_TYPE: *param = S->solver_type; return 0;
   case FISH_RIEMANN_SOLVER: *param = S->riemann_solver; return 0;
   case FISH_RECONSTRUCTION: *param = S->reconstruction; return 0;
+  case FISH_GRAVRECNSTRUCT: *param = S->gravrecnstruct; return 0;
   case FISH_SMOOTHNESS_INDICATOR: *param = S->smoothness_indicator; return 0;
   }
   return FISH_ERROR_BADARG;
@@ -66,6 +69,7 @@ int fish_setparami(fish_state *S, int param, long flag)
   case FISH_SOLVER_TYPE: S->solver_type = param; return 0;
   case FISH_RIEMANN_SOLVER: S->riemann_solver = param; return 0;
   case FISH_RECONSTRUCTION: S->reconstruction = param; return 0;
+  case FISH_GRAVRECNSTRUCT: S->gravrecnstruct = param; return 0;
   case FISH_SMOOTHNESS_INDICATOR: S->smoothness_indicator = param; return 0;
   }
   return FISH_ERROR_BADARG;
@@ -286,11 +290,13 @@ int _intercell_godunov(fish_state *S, fluids_state **fluid, double *F, int N,
   fluids_riemn_setstateL(R, SL);
   fluids_riemn_setstateR(R, SR);
 
+ // THERE SHOULD BE A SWITCH HERE SOMEHOW TO CHOOSE BETWEEN GRAVITY 
+ // RECONSTRUCTION METHODS
   switch (S->reconstruction) {
   case FISH_PCM:
     for (int n=0; n<N-1; ++n) {
       _pcm(S, &fluid[n], SL, SR, FLUIDS_PRIMITIVE);
-      _pcm(S, &fluid[n], SL, SR, FLUIDS_GRAVITY);
+      _avg(S, &fluid[n], SL, SR, FLUIDS_GRAVITY);
       fluids_riemn_execute(R);
       fluids_riemn_sample(R, S_, 0.0);
       fluids_state_derive(S_, &F[Q*n], FLUIDS_FLUX[dim]);
@@ -299,7 +305,7 @@ int _intercell_godunov(fish_state *S, fluids_state **fluid, double *F, int N,
   case FISH_PLM:
     for (int n=1; n<N-2; ++n) {
       _plm(S, &fluid[n], SL, SR, FLUIDS_PRIMITIVE);
-      _plm(S, &fluid[n], SL, SR, FLUIDS_GRAVITY);
+      _avg(S, &fluid[n], SL, SR, FLUIDS_GRAVITY);
       fluids_riemn_execute(R);
       fluids_riemn_sample(R, S_, 0.0);
       fluids_state_derive(S_, &F[Q*n], FLUIDS_FLUX[dim]);
@@ -308,7 +314,7 @@ int _intercell_godunov(fish_state *S, fluids_state **fluid, double *F, int N,
   case FISH_WENO5:
     for (int n=2; n<N-3; ++n) {
       _weno5(S, &fluid[n], SL, SR, FLUIDS_PRIMITIVE);
-      _weno5(S, &fluid[n], SL, SR, FLUIDS_GRAVITY);
+      _avg(S, &fluid[n], SL, SR, FLUIDS_GRAVITY);
       fluids_riemn_execute(R);
       fluids_riemn_sample(R, S_, 0.0);
       fluids_state_derive(S_, &F[Q*n], FLUIDS_FLUX[dim]);
@@ -457,6 +463,12 @@ int _intercell_spectral(fish_state *S, fluids_state **fluid, double *Fiph,
 		_reconstruct(S, &fmT[q][3], PLM_C2L));
       }
       break;
+    case FISH_AVG:
+      for (int q=0; q<Q; ++q) {
+	f[q] = (_reconstruct(S, &fpT[q][2], AVG_C2R) +
+		_reconstruct(S, &fmT[q][3], AVG_C2L));
+      }
+      break;
     case FISH_WENO5:
       for (int q=0; q<Q; ++q) {
 	f[q] = (_reconstruct(S, &fpT[q][2], WENO5_FD_C2R) +
@@ -485,6 +497,32 @@ void _pcm(fish_state *S, fluids_state **src, fluids_state *L,
   fluids_descr_getfluid(D, &fluid);
   fluids_state_getattr(src[0], Pl, flag);
   fluids_state_getattr(src[1], Pr, flag);
+  fluids_state_setattr(L, Pl, flag);
+  fluids_state_setattr(R, Pr, flag);
+}
+
+
+void _avg(fish_state *S, fluids_state **src, fluids_state *L,
+	  fluids_state *R, long flag)
+{
+  double P[4][MAXQ];
+  double Pl[MAXQ], Pr[MAXQ];
+  fluids_descr *D;
+  int fluid;
+  fluids_state_getdescr(src[0], &D);
+  fluids_descr_getfluid(D, &fluid);
+  int Q = fluids_descr_getncomp(D, flag);
+  for (int j=-1; j<3; ++j) {
+    fluids_state_getattr(src[j], P[j+1], flag);
+  }
+  for (int q=0; q<Q; ++q) {
+    double v[4];
+    for (int j=0; j<4; ++j) {
+      v[j] = P[j][q];
+    }
+    Pl[q] = _reconstruct(S, &v[1], AVG_C2R);
+    Pr[q] = _reconstruct(S, &v[2], AVG_C2L);
+  }
   fluids_state_setattr(L, Pl, flag);
   fluids_state_setattr(R, Pr, flag);
 }

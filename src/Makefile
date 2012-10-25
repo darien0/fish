@@ -19,8 +19,8 @@ EXE = $(BINDIR)/testfish $(BINDIR)/euler
 LIBS = $(LIBDIR)/libfish.so $(LIBDIR)/libfish.a
 HEADERS = $(INCDIR)/fish.h
 
-FLUIDSLIBDIR = $(HOME)/Work/fluids/lib
-FLUIDSINCDIR = $(HOME)/Work/fluids/include
+FLUIDSLIBDIR = /home/who/Documents/CALResearch/BinaryTurbulance/fluids/lib
+FLUIDSINCDIR = /home/who/Documents/CALResearch/BinaryTurbulance/fluids/include
 
 LIB = -L$(FLUIDSLIBDIR) -lfluids
 INC = -I$(FLUIDSINCDIR)

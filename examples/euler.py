@@ -161,6 +161,35 @@ class MaraEvolutionOperator(object):
         self.fluid.from_conserved(U1)
         return time.clock() - start
 
+    def dUdt(self, U):
+        ng = self.number_guard_zones()
+        dx = [self.dx, self.dy, self.dz]
+        self.boundary.set_boundary(U, ng)
+        self.fluid.from_conserved(U)
+
+        if (U[...,0] < 0.0).any():
+            raise RuntimeError("negative density (conserved)")
+        if (U[...,1] < 0.0).any():
+            raise RuntimeError("negative energy")
+        self.fluid.from_conserved(U)
+        P = self.fluid.primitive
+        if (P[...,0] < 0.0).any():
+            raise RuntimeError("negative density (primitive)")
+        if (P[...,1] < 0.0).any():
+            #print P[P[...,1] < 0, 1]
+            #P[P[...,1] < 0, 1] = 0.0#-1*P[P[...,1] < 0, 1]
+            #print "set pressure floor on some zones"
+            raise RuntimeError("negative pressure")
+
+        self.update_gravity()
+        L = self.scheme.time_derivative(self.fluid, dx)
+        if self.fluid.descriptor.fluid in ['gravp', 'gravs']:
+            S = self.fluid.source_terms()
+            return L + S
+        else:
+            return L
+
+
     def update_gravity(self):
         """
         Notes:
@@ -202,33 +231,6 @@ class MaraEvolutionOperator(object):
         plt.semilogy(abs(((gph1 - gph0))[ng:-ng]))
         plt.show()
 
-    def dUdt(self, U):
-        ng = self.number_guard_zones()
-        dx = [self.dx, self.dy, self.dz]
-        self.boundary.set_boundary(U, ng)
-        self.fluid.from_conserved(U)
-
-        if (U[...,0] < 0.0).any():
-            raise RuntimeError("negative density (conserved)")
-        if (U[...,1] < 0.0).any():
-            raise RuntimeError("negative energy")
-        self.fluid.from_conserved(U)
-        P = self.fluid.primitive
-        if (P[...,0] < 0.0).any():
-            raise RuntimeError("negative density (primitive)")
-        if (P[...,1] < 0.0).any():
-            #P[P[...,1] < self.pressure_floor, 1] = self.pressure_floor
-            #print "set pressure floor on some zones"
-            raise RuntimeError("negative pressure")
-
-        self.update_gravity()
-        L = self.scheme.time_derivative(self.fluid, dx)
-        if self.fluid.descriptor.fluid in ['gravp', 'gravs', 'grave']:
-            S = self.fluid.source_terms()
-            return L + S
-        else:
-            return L
-
 
 class SimulationStatus:
     pass
@@ -237,9 +239,9 @@ class SimulationStatus:
 def main():
     # Problem options
     problem_cfg = dict(resolution=[128],
-                       tfinal=10.)
-    problem = pyfish.problems.OneDimensionalPolytrope(selfgrav=True, **problem_cfg)
-    #problem = pyfish.problems.PeriodicDensityWave(**problem_cfg)
+                       tfinal=2., v0=0., fluid='gravp')
+    #problem = pyfish.problems.OneDimensionalPolytrope(selfgrav=True, **problem_cfg)
+    problem = pyfish.problems.PeriodicDensityWave(**problem_cfg)
     #problem = pyfish.problems.DrivenTurbulence2d(tfinal=0.01)
 
     # Status setup
@@ -262,7 +264,7 @@ def main():
 
     scheme = pyfish.FishSolver()
     scheme.solver_type = ["godunov", "spectral"][0]
-    scheme.reconstruction = "plm"
+    scheme.reconstruction = "plm" #plm, pcm, weno5
     scheme.riemann_solver = "hllc"
     scheme.shenzha10_param = 100.0
     scheme.smoothness_indicator = ["jiangshu96", "borges08", "shenzha10"][2]

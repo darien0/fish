@@ -1,4 +1,3 @@
-
 #include <math.h>
 #define FISH_PRIVATE_DEFS
 #include "fish.h"
@@ -37,6 +36,7 @@ static double DeesC2R_FD[3] = { 0.3, 0.6, 0.1 };
 
 static double __weno5(fish_state *S, double *v, double c[3][3], double d[3]);
 static double __plm(fish_state *S, double *v, double sgn);
+static double __avg(fish_state *S, double *v, double sgn); //Doesn't need sgn, just lazy
 static double __pcm(fish_state *S, double *v);
 
 
@@ -49,6 +49,8 @@ double _reconstruct(fish_state *S, double *v, int type)
   case WENO5_FV_C2R: return __weno5(S, v, CeesC2R_FV, DeesC2R_FV);
   case WENO5_FV_A2C: return __weno5(S, v, CeesA2C_FV, DeesA2C_FV);
   case WENO5_FV_C2A: return __weno5(S, v, CeesC2A_FV, DeesC2A_FV);
+  case AVG_C2L: return __avg(S, v, -1.0);
+  case AVG_C2R: return __avg(S, v, +1.0);
   case PLM_C2L: return __plm(S, v, -1.0);
   case PLM_C2R: return __plm(S, v, +1.0);
   case PCM_C2L: return __pcm(S, v);
@@ -76,19 +78,24 @@ static inline double __plm_minmod(double ul, double u0, double ur, double tht)
   double fabc[3] = { fabs(a), fabs(b), fabs(c) };
   return 0.25*fabs(SGN(a)+SGN(b))*(SGN(a)+SGN(c))*min3(fabc);
 }
+
 double __pcm(fish_state *S, double *v)
 {
   return v[0];
 }
+
 double __plm(fish_state *S, double *v, double sgn)
 {
   return v[0] + sgn*0.5*__plm_minmod(v[-1], v[0], v[1], S->plm_theta);
 }
+
+double __avg(fish_state *S, double *v, double sgn)
+{
+  return (v[0] + v[1]) / 2 ; /*S*/
+}
+
 double __weno5(fish_state *S, double *v, double c[3][3], double d[3])
 // -----------------------------------------------------------------------------
-//
-//
-//
 // Improvement of the WENO scheme smoothness estimator, Shen & Zha (2010)
 // -----------------------------------------------------------------------------
 {

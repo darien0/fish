@@ -5,6 +5,7 @@
 enum {
   FISH_PCM, // piecewise constant reconstruction
   FISH_PLM, // piecewise linear reconstruction
+  FISH_AVG, // averaging method for gravitational terms
   FISH_WENO5, // weno-5 reconstruction
   FISH_GODUNOV, // conservative finite volume Riemann-solver intercell fluxes
   FISH_SPECTRAL, // conservative finite differencing of characteristic fields
@@ -26,6 +27,7 @@ enum {
   FISH_SOLVER_TYPE,
   FISH_RIEMANN_SOLVER,
   FISH_RECONSTRUCTION,
+  FISH_GRAVRECNSTRUCT,
   FISH_SMOOTHNESS_INDICATOR,
 
   // -----------------
@@ -59,13 +61,15 @@ enum { PCM_C2L, PCM_C2R,
        PLM_C2L, PLM_C2R,
        WENO5_FD_C2R, WENO5_FD_C2L,
        WENO5_FV_C2R, WENO5_FV_C2L,
-       WENO5_FV_C2A, WENO5_FV_A2C };
+       WENO5_FV_C2A, WENO5_FV_A2C,
+       AVG_C2L, AVG_C2R};
 double _reconstruct(fish_state *S, double *v, int type);
 
 struct fish_state {
   int solver_type;
   int riemann_solver;
   int reconstruction;
+  int gravrecnstruct;
   int smoothness_indicator;
   double plm_theta;
   double shenzha10_param;

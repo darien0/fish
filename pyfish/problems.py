@@ -1,4 +1,3 @@
-
 import numpy as np
 import pyfluids
 from pyfish import boundary, driving, gravity
@@ -35,7 +34,7 @@ class OneDimensionalUpsidedownGaussian(TestProblem):
     rho$ does not have to be satisfied. Sets up an upside-down Gaussian
     potential well with a pressure profile in hydrostatic equillibrium.
     '''
-    fluid = 'gravs'
+    fluid = 'grave'
     gamma = 1.4
     sig = 0.05
     sie = 2.00
@@ -64,7 +63,7 @@ class OneDimensionalPolytrope(TestProblem):
     Provides the initial conditions of a 1d polytrope for Gamma=2. Pressure
     density satisfy Poisson equation and hydrostatic equillibrium.
     '''
-    fluid = 'grave' # or gravp, grave
+    fluid = 'gravp' # or gravp, grave
     gamma = 2.0
     Dc = 1.0 # central density
     Da = 1e-2 # atmosphere density
@@ -72,7 +71,7 @@ class OneDimensionalPolytrope(TestProblem):
     R = 0.25
     four_pi_G = 1.0
     plot_fields = ['rho', 'pre', 'phi', 'gph']
-    pauls_fix = True
+    floor_fix = True
 
     def __init__(self, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
@@ -86,13 +85,13 @@ class OneDimensionalPolytrope(TestProblem):
             rho = self.Dc * np.cos(np.pi * x / R)
             pre = K * rho**2.0
         else:
-            if self.pauls_fix:
+            if self.floor_fix:
                 rho = 0.0
                 pre = 0.0
             else:
                 rho = self.Da
                 pre = K * rho**2.0
-        if self.pauls_fix:
+        if self.floor_fix:
             if rho < self.Da: rho = self.Da
             if pre < self.Pa: pre = self.Pa
         return [rho, pre, 0.0, 0.0, 0.0]

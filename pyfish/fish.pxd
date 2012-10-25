@@ -8,6 +8,7 @@ cdef extern from "fish.h":
     enum:
         FISH_PCM, # piecewise constant reconstruction
         FISH_PLM, # piecewise linear reconstruction
+        FISH_AVG, # piecewise linear reconstruction
         FISH_WENO5, # weno-5 reconstruction
         FISH_GODUNOV, # conservative finite volume Riemann-solver intercell fluxes
         FISH_SPECTRAL, # conservative finite differencing of characteristic fields
@@ -29,6 +30,7 @@ cdef extern from "fish.h":
         FISH_SOLVER_TYPE,
         FISH_RIEMANN_SOLVER,
         FISH_RECONSTRUCTION,
+        FISH_GRAVRECNSTRUCT,
         FISH_SMOOTHNESS_INDICATOR,
 
         # -----------------

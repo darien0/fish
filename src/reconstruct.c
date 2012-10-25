@@ -91,7 +91,8 @@ double __plm(fish_state *S, double *v, double sgn)
 
 double __avg(fish_state *S, double *v, double sgn)
 {
-  return (v[0] + v[1]) / 2 ; /*S*/
+  int sgnsgn = 1*sgn;
+  return (v[0] + v[sgnsgn]) / 2 ; /*S*/
 }
 
 double __weno5(fish_state *S, double *v, double c[3][3], double d[3])
